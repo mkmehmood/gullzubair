@@ -2512,7 +2512,6 @@ if (!validateUUID(calcId)) {
 calcId = generateUUID('calc');
 }
 const calcCreatedAt = getTimestamp();
-const _cycSel = await getCalcCycleSelection(seller);
 let entry = {
 id: calcId,
 seller: seller,
@@ -2545,9 +2544,6 @@ statusText: statusText,
 statusClass: statusClass,
 linkedSalesIds: [],
 linkedRepSalesIds: [],
-cycleStart: _cycSel.first || null,
-cycleEnd: _cycSel.last || null,
-cycleDays: _cycSel.dayCount || 0,
 syncedAt: new Date().toISOString()
 };
 entry = ensureRecordIntegrity(entry, false);
@@ -2556,9 +2552,10 @@ const reconciledCustomerIds = new Set();
 if (Array.isArray(salesHistory)) {
   salesHistory.forEach(h => { if (Array.isArray(h.linkedSalesIds)) h.linkedSalesIds.forEach(id => reconciledCustomerIds.add(id)); });
 }
+const _cycSel = await getCalcCycleSelection(seller);
 const linkedIds = await markAllPendingCreditSalesAsCash(seller, reconciledCustomerIds, _cycSel.selectedIds);
 entry.linkedSalesIds = linkedIds;
-const linkedRepIds = await markRepSalesEntriesAsUsed(seller, date, calcId, _cycSel.rangeFrom);
+const linkedRepIds = await markRepSalesEntriesAsUsed(seller, date, calcId, _cycSel.from);
 entry.linkedRepSalesIds = linkedRepIds;
 try {
 let history = await sqliteStore.get('noman_history', []);
@@ -2582,7 +2579,7 @@ document.getElementById('commissionPerUnit').value = '';
 document.getElementById('commissionPaid').value = '';
 document.getElementById('returnStoreSection').classList.add('hidden');
 document.getElementById('expiredSection').classList.add('hidden');
-window._calcRangeFrom = null;
+window._calcFromManual = false;
 showToast(`Transaction saved! ${linkedIds.length} sales entries reconciled.`, 'success');
 await loadSalesData(currentCompMode);
 if (typeof refreshCustomerSales === 'function') await refreshCustomerSales(1, true);

@@ -134,19 +134,6 @@ function _calcSaleDay(sale) {
 return (sale && (sale.supplyDate || sale.date)) || '';
 }
 
-const _CALC_MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-
-function _calcFmtDay(d, withYear) {
-const p = (d || '').split('-');
-if (p.length !== 3) return d || '';
-return parseInt(p[2], 10) + ' ' + _CALC_MONTHS[parseInt(p[1], 10) - 1] + (withYear ? ' ' + p[0] : '');
-}
-
-function _calcTodayISO() {
-const n = new Date();
-return n.getFullYear() + '-' + String(n.getMonth() + 1).padStart(2, '0') + '-' + String(n.getDate()).padStart(2, '0');
-}
-
 async function getPendingRepDeliveries(seller) {
 const salesHistory = ensureArray(await sqliteStore.get('noman_history'));
 const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
@@ -162,23 +149,15 @@ return customerSales.filter(sale =>
   !sale.creditReceived &&
   !reconciledSalesIds.has(sale.id) &&
   sale.transactionType !== 'OLD_DEBT'
-).sort((a, b) => {
-  const da = _calcSaleDay(a), db = _calcSaleDay(b);
-  if (da !== db) return da < db ? -1 : 1;
-  return (Number(a.timestamp) || 0) - (Number(b.timestamp) || 0);
-});
+);
 }
 
-async function calculateTotalSoldForRepresentative(seller) {
-const sel = await getCalcCycleSelection(seller);
-return sel.qty;
-}
-
-function getCalcRange(pending) {
-const el = document.getElementById('sale-date');
-const to = (el && el.value) || _calcTodayISO();
-let from = window._calcRangeFrom || null;
-if (!from) {
+function getCalcDateRange(pending) {
+const toEl = document.getElementById('sale-date');
+const fromEl = document.getElementById('sale-date-from');
+const to = (toEl && toEl.value) || new Date().toISOString().split('T')[0];
+let from = (fromEl && fromEl.value) || '';
+if (!window._calcFromManual || !from) {
   const days = (pending || []).map(_calcSaleDay).filter(d => d && d <= to).sort();
   from = days.length ? days[0] : to;
 }
@@ -188,153 +167,31 @@ return { from, to };
 
 async function getCalcCycleSelection(seller) {
 const pending = await getPendingRepDeliveries(seller);
-const { from, to } = getCalcRange(pending);
+const { from, to } = getCalcDateRange(pending);
 const selected = pending.filter(s => { const d = _calcSaleDay(s); return d >= from && d <= to; });
-const qty = selected.reduce((t, s) => t + (s.quantity || 0), 0);
-const days = [...new Set(selected.map(_calcSaleDay))].sort();
 return {
-  pending, selected,
+  selected,
   selectedIds: new Set(selected.map(s => s.id)),
-  qty,
-  rangeFrom: from, rangeTo: to,
-  first: days.length ? days[0] : null,
-  last: days.length ? days[days.length - 1] : null,
-  dayCount: days.length
+  qty: selected.reduce((t, s) => t + (s.quantity || 0), 0),
+  from, to
 };
 }
 
-function updateCalcRangeUI(sel, seller) {
-const lbl = document.getElementById('calcRangeLabel');
-const info = document.getElementById('calcRangeInfo');
-if (lbl) {
-  const sameYear = sel.rangeFrom.slice(0, 4) === sel.rangeTo.slice(0, 4);
-  lbl.textContent = sel.rangeFrom === sel.rangeTo
-    ? _calcFmtDay(sel.rangeTo, true)
-    : _calcFmtDay(sel.rangeFrom, !sameYear) + '  →  ' + _calcFmtDay(sel.rangeTo, true);
-}
-if (info) {
-  if (seller === 'COMBINED') info.textContent = '';
-  else if (sel.selected.length) info.textContent = `${sel.dayCount} delivery day${sel.dayCount !== 1 ? 's' : ''} · ${safeNumber(sel.qty, 0).toFixed(2)} kg to settle`;
-  else info.textContent = 'No unsettled deliveries in this range';
-}
+async function calculateTotalSoldForRepresentative(seller) {
+const sel = await getCalcCycleSelection(seller);
+return sel.qty;
 }
 
-function closeCalcRangePopup() {
-const ov = document.getElementById('calcRangeOverlay');
-if (ov) ov.remove();
-window._crp = null;
+async function onCalcDateChange(which) {
+const fromEl = document.getElementById('sale-date-from');
+const toEl = document.getElementById('sale-date');
+if (which === 'from') window._calcFromManual = true;
+if (fromEl && toEl && fromEl.value && toEl.value && fromEl.value > toEl.value) {
+  if (which === 'from') toEl.value = fromEl.value; else fromEl.value = toEl.value;
 }
-
-function _crpEnsureStyle() {
-if (document.getElementById('crpStyle')) return;
-const st = document.createElement('style');
-st.id = 'crpStyle';
-st.textContent = `.crp-overlay { position: fixed; inset: 0; z-index: 10500; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; padding: 12px; box-sizing: border-box; } .crp-card { width: 320px; max-width: 100%; background: var(--glass-frosted, var(--glass)); border: 1px solid var(--glass-border); border-radius: 16px; box-shadow: var(--shadow); padding: 14px; box-sizing: border-box; backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); color: var(--text-main); } .crp-heading { font-size: 0.85rem; font-weight: 800; margin-bottom: 10px; } .crp-fields { display: flex; gap: 8px; margin-bottom: 10px; } .crp-fields > div { flex: 1; padding: 6px 10px; border-radius: 10px; border: 1px solid var(--glass-border); display: flex; flex-direction: column; } .crp-fields span { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); } .crp-fields b { font-size: 0.82rem; } .crp-day { position: relative; } .crp-in { background: var(--toggle-opt-active-bg, var(--accent-dim)); border-radius: 0; } .crp-edge { background: var(--accent); color: #fff; font-weight: 700; border-radius: 8px; } .crp-dot { display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: var(--accent-emerald, #059669); } .crp-day .crp-dot { position: absolute; bottom: 3px; left: 50%; transform: translateX(-50%); } .crp-legend { font-size: 0.62rem; color: var(--text-muted); margin-top: 8px; display: flex; align-items: center; gap: 6px; } .crp-summary { font-size: 0.78rem; font-weight: 700; margin-top: 8px; min-height: 1.2em; } .crp-actions { display: flex; gap: 8px; margin-top: 12px; } .crp-btn { flex: 1; padding: 10px 6px; border-radius: 10px; cursor: pointer; border: 1px solid var(--glass-border); background: transparent; color: var(--text-main); font-weight: 700; font-size: 0.78rem; } .crp-btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }`;
-document.head.appendChild(st);
+await loadSalesData();
+setPerfOverviewMode(currentPerfOverviewMode || 'day');
 }
-
-async function openCalcRangePopup() {
-closeCalcRangePopup();
-_crpEnsureStyle();
-const seller = document.getElementById('sellerSelect').value;
-const pending = await getPendingRepDeliveries(seller);
-const r = getCalcRange(pending);
-const perDay = {};
-pending.forEach(s => { const d = _calcSaleDay(s); if (d) perDay[d] = (perDay[d] || 0) + (s.quantity || 0); });
-const vd = r.to.split('-');
-window._crp = { from: r.from, to: r.to, picking: false, seller, perDay, y: parseInt(vd[0], 10), m: parseInt(vd[1], 10) - 1 };
-const ov = document.createElement('div');
-ov.id = 'calcRangeOverlay';
-ov.className = 'crp-overlay';
-ov.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:10500;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);';
-ov.innerHTML = `<div class="crp-card">
-<div class="crp-heading">Select Date Range</div>
-<div class="crp-fields"><div><span>From</span><b id="crpFrom"></b></div><div><span>To</span><b id="crpTo"></b></div></div>
-<div class="cdp-header"><button type="button" class="cdp-nav" onclick="crpNav(-1)">&#8249;</button><span class="cdp-title" id="crpTitle"></span><button type="button" class="cdp-nav" onclick="crpNav(1)">&#8250;</button></div>
-<div class="cdp-weekdays"><span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span></div>
-<div class="cdp-grid" id="crpGrid"></div>
-<div class="crp-legend"><i class="crp-dot"></i> day with unsettled deliveries</div>
-<div class="crp-summary" id="crpSummary"></div>
-<div class="crp-actions"><button type="button" class="crp-btn" onclick="crpAllPending()">All pending</button><button type="button" class="crp-btn" onclick="closeCalcRangePopup()">Cancel</button><button type="button" class="crp-btn crp-btn-primary" onclick="applyCalcRange()">Apply</button></div>
-</div>`;
-ov.addEventListener('click', e => { if (e.target === ov) closeCalcRangePopup(); });
-document.documentElement.appendChild(ov);
-renderCalcRangePopup();
-}
-
-function renderCalcRangePopup() {
-const st = window._crp;
-if (!st) return;
-document.getElementById('crpTitle').textContent = ['January','February','March','April','May','June','July','August','September','October','November','December'][st.m] + ' ' + st.y;
-document.getElementById('crpFrom').textContent = _calcFmtDay(st.from, true);
-document.getElementById('crpTo').textContent = st.picking ? '…' : _calcFmtDay(st.to, true);
-const first = new Date(st.y, st.m, 1).getDay();
-const dim = new Date(st.y, st.m + 1, 0).getDate();
-const today = _calcTodayISO();
-let html = '';
-for (let i = 0; i < first; i++) html += '<span></span>';
-for (let d = 1; d <= dim; d++) {
-  const iso = st.y + '-' + String(st.m + 1).padStart(2, '0') + '-' + String(d).padStart(2, '0');
-  let cls = 'cdp-day crp-day';
-  if (iso >= st.from && iso <= st.to) cls += ' crp-in';
-  if (iso === st.from || iso === st.to) cls += ' crp-edge';
-  if (iso === today) cls += ' cdp-day-today';
-  html += `<button type="button" class="${cls}" data-day="${iso}" onclick="crpPick(this.dataset.day)">${d}${st.perDay[iso] ? '<i class="crp-dot"></i>' : ''}</button>`;
-}
-document.getElementById('crpGrid').innerHTML = html;
-const sum = document.getElementById('crpSummary');
-if (st.picking) sum.textContent = 'Now tap the end date';
-else if (st.seller === 'COMBINED') sum.textContent = 'Comparison view uses the To date.';
-else {
-  let qty = 0, n = 0;
-  Object.keys(st.perDay).forEach(d => { if (d >= st.from && d <= st.to) { qty += st.perDay[d]; n++; } });
-  sum.textContent = n ? `${n} delivery day${n !== 1 ? 's' : ''} · ${safeNumber(qty, 0).toFixed(2)} kg to settle` : 'No unsettled deliveries in this range';
-}
-}
-
-function crpNav(delta) {
-const st = window._crp;
-if (!st) return;
-st.m += delta;
-if (st.m < 0) { st.m = 11; st.y--; }
-if (st.m > 11) { st.m = 0; st.y++; }
-renderCalcRangePopup();
-}
-
-function crpPick(iso) {
-const st = window._crp;
-if (!st) return;
-if (!st.picking) {
-  st.from = iso; st.to = iso; st.picking = true;
-} else {
-  if (iso < st.from) { st.to = st.from; st.from = iso; } else { st.to = iso; }
-  st.picking = false;
-}
-renderCalcRangePopup();
-}
-
-function crpAllPending() {
-const st = window._crp;
-if (!st) return;
-const days = Object.keys(st.perDay).sort();
-if (!days.length) return;
-st.from = days[0]; st.to = days[days.length - 1]; st.picking = false;
-const p = st.to.split('-');
-st.y = parseInt(p[0], 10); st.m = parseInt(p[1], 10) - 1;
-renderCalcRangePopup();
-}
-
-function applyCalcRange() {
-const st = window._crp;
-if (!st) return;
-window._calcRangeFrom = st.from;
-const el = document.getElementById('sale-date');
-el.value = st.to;
-closeCalcRangePopup();
-el.dispatchEvent(new Event('change'));
-}
-
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeCalcRangePopup(); });
 
 async function autoFillTotalSoldQuantity() {
 const salesHistory = ensureArray(await sqliteStore.get('noman_history'));
@@ -343,14 +200,19 @@ const seller = document.getElementById('sellerSelect').value;
 const totalSoldField = document.getElementById('totalSold');
 const creditSalesField = document.getElementById('creditSales');
 const recoveredField = document.getElementById('prevCreditReceived');
+const fromEl = document.getElementById('sale-date-from');
 if (!totalSoldField) return;
-const sel = await getCalcCycleSelection(seller);
-updateCalcRangeUI(sel, seller);
+if (window._calcSeller !== seller) {
+  window._calcSeller = seller;
+  window._calcFromManual = false;
+}
 if (seller === 'COMBINED') {
 totalSoldField.value = '';
 totalSoldField.readOnly = true;
 return;
 }
+const sel = await getCalcCycleSelection(seller);
+if (fromEl && fromEl.value !== sel.from) fromEl.value = sel.from;
 totalSoldField.value = safeNumber(sel.qty, 0).toFixed(2);
 totalSoldField.readOnly = true;
 totalSoldField.style.background = 'rgba(37, 99, 235, 0.1)';
@@ -371,7 +233,7 @@ if (Array.isArray(salesHistory)) {
 let creditSalesKg = 0;
 let recoveredCash = 0;
 (Array.isArray(repSales) ? repSales : []).forEach(sale => {
-  if (sale.salesRep === seller && sale.date >= sel.rangeFrom && sale.date <= sel.rangeTo && !usedRepSaleIds.has(sale.id)) {
+  if (sale.salesRep === seller && sale.date >= sel.from && sale.date <= sel.to && !usedRepSaleIds.has(sale.id)) {
     if (sale.paymentType === 'CREDIT') {
       creditSalesKg += (sale.quantity || 0);
     }
@@ -957,7 +819,7 @@ document.addEventListener('DOMContentLoaded', async function _appBootstrap() {
     else if (typeof initFirebase === 'function') initFirebase();
   }, 100);
   const today = new Date().toISOString().split('T')[0];
-  ['sys-date','sale-date','cust-date','factory-date','expenseDate','rep-date'].forEach(id => {
+  ['sys-date','sale-date','sale-date-from','cust-date','factory-date','expenseDate','rep-date'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = today;
   });
