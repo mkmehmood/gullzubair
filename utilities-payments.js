@@ -225,8 +225,17 @@ if (ov) ov.remove();
 window._crp = null;
 }
 
+function _crpEnsureStyle() {
+if (document.getElementById('crpStyle')) return;
+const st = document.createElement('style');
+st.id = 'crpStyle';
+st.textContent = `.crp-overlay { position: fixed; inset: 0; z-index: 10500; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; padding: 12px; box-sizing: border-box; } .crp-card { width: 320px; max-width: 100%; background: var(--glass-frosted, var(--glass)); border: 1px solid var(--glass-border); border-radius: 16px; box-shadow: var(--shadow); padding: 14px; box-sizing: border-box; backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); color: var(--text-main); } .crp-heading { font-size: 0.85rem; font-weight: 800; margin-bottom: 10px; } .crp-fields { display: flex; gap: 8px; margin-bottom: 10px; } .crp-fields > div { flex: 1; padding: 6px 10px; border-radius: 10px; border: 1px solid var(--glass-border); display: flex; flex-direction: column; } .crp-fields span { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); } .crp-fields b { font-size: 0.82rem; } .crp-day { position: relative; } .crp-in { background: var(--toggle-opt-active-bg, var(--accent-dim)); border-radius: 0; } .crp-edge { background: var(--accent); color: #fff; font-weight: 700; border-radius: 8px; } .crp-dot { display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: var(--accent-emerald, #059669); } .crp-day .crp-dot { position: absolute; bottom: 3px; left: 50%; transform: translateX(-50%); } .crp-legend { font-size: 0.62rem; color: var(--text-muted); margin-top: 8px; display: flex; align-items: center; gap: 6px; } .crp-summary { font-size: 0.78rem; font-weight: 700; margin-top: 8px; min-height: 1.2em; } .crp-actions { display: flex; gap: 8px; margin-top: 12px; } .crp-btn { flex: 1; padding: 10px 6px; border-radius: 10px; cursor: pointer; border: 1px solid var(--glass-border); background: transparent; color: var(--text-main); font-weight: 700; font-size: 0.78rem; } .crp-btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }`;
+document.head.appendChild(st);
+}
+
 async function openCalcRangePopup() {
 closeCalcRangePopup();
+_crpEnsureStyle();
 const seller = document.getElementById('sellerSelect').value;
 const pending = await getPendingRepDeliveries(seller);
 const r = getCalcRange(pending);
@@ -237,6 +246,7 @@ window._crp = { from: r.from, to: r.to, picking: false, seller, perDay, y: parse
 const ov = document.createElement('div');
 ov.id = 'calcRangeOverlay';
 ov.className = 'crp-overlay';
+ov.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:10500;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.5);';
 ov.innerHTML = `<div class="crp-card">
 <div class="crp-heading">Select Date Range</div>
 <div class="crp-fields"><div><span>From</span><b id="crpFrom"></b></div><div><span>To</span><b id="crpTo"></b></div></div>
@@ -248,7 +258,7 @@ ov.innerHTML = `<div class="crp-card">
 <div class="crp-actions"><button type="button" class="crp-btn" onclick="crpAllPending()">All pending</button><button type="button" class="crp-btn" onclick="closeCalcRangePopup()">Cancel</button><button type="button" class="crp-btn crp-btn-primary" onclick="applyCalcRange()">Apply</button></div>
 </div>`;
 ov.addEventListener('click', e => { if (e.target === ov) closeCalcRangePopup(); });
-document.body.appendChild(ov);
+document.documentElement.appendChild(ov);
 renderCalcRangePopup();
 }
 
