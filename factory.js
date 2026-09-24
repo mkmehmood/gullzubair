@@ -817,7 +817,7 @@ if (item.supplierName) {
 const remainingPayable = item.totalPayable || 0;
 const isFullyPaid = item.paymentStatus === 'paid' || remainingPayable <= 0;
 const payableDisplay = isFullyPaid ? `<span class="u-text-emerald">0.00</span>` : `<span style="font-weight:600;color:var(--accent);">${safeNumber(remainingPayable, 0).toFixed(2)}</span>`;
-supplierHtml = `<div style="font-size:0.65rem;color:var(--text-muted);margin-top:4px;"><div class="supplier-name-badge">${String(item.supplierName).replace(/'/g, "&#39;").replace(/"/g, "&quot;")}</div><div style="margin-top:3px;font-size:0.7rem;">${payableDisplay}</div></div>`;
+supplierHtml = `<div style="font-size:0.65rem;color:var(--text-muted);margin-top:4px;"><div class="supplier-name-badge">${esc(item.supplierName)}</div><div style="margin-top:3px;font-size:0.7rem;">${payableDisplay}</div></div>`;
 } else {
 supplierHtml = `<div style="font-size:0.65rem;color:var(--text-muted);margin-top:4px;font-style:italic;opacity:0.6;">No supplier linked</div>`;
 }

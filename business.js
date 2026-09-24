@@ -59,16 +59,13 @@ function _readFileAsText(file) {
     fr.readAsText(file);
   });
 }
-if (window.trustedTypes && window.trustedTypes.createPolicy) {
-  window._gndHTMLPolicy = window.trustedTypes.createPolicy('gnd-html-policy', {
-    createHTML: (s) => s
-  });
-  window.setHTML = (el, html) => {
-    el.innerHTML = window._gndHTMLPolicy.createHTML(html);
-  };
-} else {
-  window.setHTML = (el, html) => { el.innerHTML = html; };
-}
+// NOTE: a Trusted Types policy was previously stubbed out here but never
+// enforced (no `trusted-types`/`require-trusted-types-for` CSP directive)
+// and never actually called anywhere in the codebase — it provided no real
+// protection. Removed rather than left as misleading dead scaffolding.
+// The real XSS defense is: always escape untrusted strings with esc()
+// (defined above, top of this file) before interpolating them into
+// innerHTML or inline-attribute HTML.
 const CryptoEngine = (() => {
 
 const MAGIC_V2 = new Uint8Array([0x47,0x5A,0x4E,0x44,0x5F,0x45,0x4E,0x43,0x5F,0x56,0x32]);

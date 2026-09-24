@@ -32,7 +32,6 @@ const CORE_FILES = [
   'constants.js', 'business.js', 'admin-data.js',
   'sync.js', 'utilities-core.js', 'utilities-sales.js',
   'utilities-payments.js', 'customers.js',
-  'custom-date-picker.js',
 ];
 
 const coreTmp    = join(DIST, '_core.js');
@@ -92,8 +91,6 @@ html = html.replace(
   `<script src="constants.js" defer></script>\n<script src="business.js" defer></script>\n<script src="admin-data.js" defer></script>\n<script src="sync.js" defer></script>\n<script src="utilities-core.js" defer></script>\n<script src="utilities-sales.js" defer></script>\n<script src="utilities-payments.js" defer></script>\n<script src="factory.js" defer></script>\n<script src="customers.js" defer></script>\n<script src="rep-sales.js" defer></script>`,
   lazyStub,
 );
-
-html = html.replace('<script src="custom-date-picker.js" defer></script>', '');
 
 write(join(DIST, 'index.html'), html);
 

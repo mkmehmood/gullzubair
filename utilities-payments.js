@@ -1818,7 +1818,7 @@ html += `<div style="padding: 8px 12px; font-size: 0.7rem; color: var(--text-mut
 if (expenseMatches.length > 0) {
 expenseMatches.forEach(name => {
 if (!name || typeof name !== 'string') return;
-const safeName = name.replace(/'/g, "\'").replace(/"/g, '&quot;');
+const safeName = esc(name);
 const count = expenseRecords.filter(e => e && e.name === name).length;
 html += `
 <div style="
@@ -1848,7 +1848,7 @@ html += `<div style="padding: 8px 12px; font-size: 0.7rem; color: var(--text-mut
 if (entityMatches.length > 0) {
 entityMatches.forEach(entity => {
 if (!entity || !entity.name || typeof entity.name !== 'string') return;
-const safeName = entity.name.replace(/'/g, "\'").replace(/"/g, '&quot;');
+const safeName = esc(entity.name);
 const transactions = paymentTransactions.filter(t => t && t.entityId === entity.id).length;
 html += `
 <div style="
@@ -5740,7 +5740,7 @@ name && typeof name === 'string' && name.toLowerCase().includes(query.toLowerCas
 );
 if (matches.length > 0) {
 matches.forEach(name => {
-const safeName = String(name).replace(/'/g, "\\'").replace(/"/g, '&quot;');
+const safeName = esc(name);
 html += `
 <div style="padding: 10px; cursor: pointer; border-bottom: 1px solid var(--glass-border); font-size: 0.85rem; color: var(--text-main); background: var(--input-bg);"
 onmousedown="selectFromUniversalSearch('${inputId}', '${resultsId}', '${safeName}', 'name')"
@@ -5765,8 +5765,8 @@ entity.name.toLowerCase().includes(query.toLowerCase())
 }
 if (matches.length > 0) {
 matches.forEach(entity => {
-const safeName = String(entity.name).replace(/'/g, "\\'").replace(/"/g, '&quot;');
-const safeId = String(entity.id).replace(/'/g, "\\'");
+const safeName = esc(entity.name);
+const safeId = esc(entity.id);
 const entityBal = calculateEntityBalances()[entity.id] || 0;
 const typeColor = entityBal >= 0 ? 'var(--danger)' : 'var(--accent-emerald)';
 html += `
@@ -5793,8 +5793,8 @@ entity.name.toLowerCase().includes(query.toLowerCase())
 }
 if (matches.length > 0) {
 matches.forEach(supplier => {
-const safeName = String(supplier.name).replace(/'/g, "\\'").replace(/"/g, '&quot;');
-const safeId = String(supplier.id).replace(/'/g, "\\'");
+const safeName = esc(supplier.name);
+const safeId = esc(supplier.id);
 html += `
 <div style="padding: 10px; cursor: pointer; border-bottom: 1px solid var(--glass-border); font-size: 0.85rem; color: var(--text-main); background: var(--input-bg);"
 onmousedown="selectFromUniversalSearch('${inputId}', '${resultsId}', '${safeName}', 'supplier', '${safeId}')"
@@ -5828,7 +5828,7 @@ name && typeof name === 'string' && name.toLowerCase().includes(query.toLowerCas
 );
 if (matches.length > 0) {
 matches.forEach(name => {
-const safeName = String(name).replace(/'/g, "\\'").replace(/"/g, '&quot;');
+const safeName = esc(name);
 html += `
 <div style="padding: 10px; cursor: pointer; border-bottom: 1px solid var(--glass-border); font-size: 0.85rem; color: var(--text-main); background: var(--input-bg);"
 onmousedown="selectFromUniversalSearch('${inputId}', '${resultsId}', '${safeName}', 'repName')"
@@ -7607,7 +7607,7 @@ const item = document.createElement('div');
 item.className = 'cust-history-item';
 item.style.flexDirection = 'column';
 item.style.alignItems = 'stretch';
-const safeId = String(t.id).replace(/'/g, "\\'");
+const safeId = esc(t.id);
 const photoBadgeId = 'ph-badge-trf-' + String(t.id).replace(/[^a-z0-9]/gi, '');
 item.innerHTML = `
 <div class="txn-card-row">
