@@ -397,6 +397,8 @@ if ('serviceWorker' in navigator) {
 }
 input:checked + .theme-toggle-track { background: var(--accent); }
 input:checked + .theme-toggle-track::before { transform: translateX(22px); }
+#calcRangeInputs { position:absolute; left:0; right:0; top:0; height:36px; opacity:0; pointer-events:none; }
+#calcRangeInputs .cdp-wrap { position:absolute; left:0; top:0; width:100%; }
 </style>
 </head>
 <body>
@@ -2119,8 +2121,15 @@ No records found
 </select>
 </div>
 </div>
-<div class="field"><label>Date From</label><input type="date" id="sale-date-from" onchange="onCalcDateChange('from')"></div>
-<div class="field"><label>Date To</label><input type="date" id="sale-date" onchange="onCalcDateChange('to')"></div>
+<div class="field" style="grid-column:1 / -1;"><label>Date Range</label>
+<div style="position:relative;">
+<button type="button" id="calcRangeBtn" class="cdp-btn" onclick="openCalcRangePicker()"><span class="cdp-btn-label" id="calcRangeLabel">Select dates</span><span class="cdp-btn-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect x="2" y="3" width="12" height="11" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M2 6.5h12M5.5 1.8v2.6M10.5 1.8v2.6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg></span></button>
+<div id="calcRangeInputs" aria-hidden="true">
+<input type="date" id="sale-date-from" onchange="onCalcDateChange('from')">
+<input type="date" id="sale-date" onchange="onCalcDateChange('to')">
+</div>
+</div>
+</div>
 </div>
 <div id="entrySection" class="hidden">
 <div class="u-heading-accent" style="margin-top:15px;">Product Quantities</div>

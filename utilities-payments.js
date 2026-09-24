@@ -182,12 +182,48 @@ const sel = await getCalcCycleSelection(seller);
 return sel.qty;
 }
 
+const _CALC_MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function _calcFmtDay(iso, withYear) {
+const p = (iso || '').split('-');
+if (p.length !== 3) return '';
+return parseInt(p[2], 10) + ' ' + _CALC_MONTHS[parseInt(p[1], 10) - 1] + (withYear ? ' ' + p[0] : '');
+}
+
+function updateCalcRangeLabel() {
+const fromEl = document.getElementById('sale-date-from');
+const toEl = document.getElementById('sale-date');
+const lbl = document.getElementById('calcRangeLabel');
+if (!fromEl || !toEl || !lbl) return;
+const from = fromEl.value, to = toEl.value;
+if (from) toEl.setAttribute('min', from); else toEl.removeAttribute('min');
+const seller = (document.getElementById('sellerSelect') || {}).value;
+if (!to) { lbl.textContent = 'Select dates'; return; }
+if (seller === 'COMBINED' || !from || from === to) { lbl.textContent = _calcFmtDay(to, true); return; }
+const sameYear = from.slice(0, 4) === to.slice(0, 4);
+lbl.textContent = _calcFmtDay(from, !sameYear) + ' to ' + _calcFmtDay(to, true);
+}
+
+function openCalcRangePicker() {
+const seller = (document.getElementById('sellerSelect') || {}).value;
+const btn = document.getElementById(seller === 'COMBINED' ? 'sale-date__cdpBtn' : 'sale-date-from__cdpBtn');
+if (btn) btn.click();
+}
+
 async function onCalcDateChange(which) {
 const fromEl = document.getElementById('sale-date-from');
 const toEl = document.getElementById('sale-date');
 if (which === 'from') window._calcFromManual = true;
 if (fromEl && toEl && fromEl.value && toEl.value && fromEl.value > toEl.value) {
   if (which === 'from') toEl.value = fromEl.value; else fromEl.value = toEl.value;
+}
+updateCalcRangeLabel();
+const seller = (document.getElementById('sellerSelect') || {}).value;
+if (which === 'from' && seller !== 'COMBINED') {
+  setTimeout(() => {
+    const toBtn = document.getElementById('sale-date__cdpBtn');
+    if (toBtn) toBtn.click();
+  }, 0);
 }
 await loadSalesData();
 setPerfOverviewMode(currentPerfOverviewMode || 'day');
@@ -209,10 +245,12 @@ if (window._calcSeller !== seller) {
 if (seller === 'COMBINED') {
 totalSoldField.value = '';
 totalSoldField.readOnly = true;
+updateCalcRangeLabel();
 return;
 }
 const sel = await getCalcCycleSelection(seller);
 if (fromEl && fromEl.value !== sel.from) fromEl.value = sel.from;
+updateCalcRangeLabel();
 totalSoldField.value = safeNumber(sel.qty, 0).toFixed(2);
 totalSoldField.readOnly = true;
 totalSoldField.style.background = 'rgba(37, 99, 235, 0.1)';
@@ -823,6 +861,7 @@ document.addEventListener('DOMContentLoaded', async function _appBootstrap() {
     const el = document.getElementById(id);
     if (el) el.value = today;
   });
+  updateCalcRangeLabel();
   currentFactoryDate = today;
   if (await sqliteStore.get('bio_enabled') === 'true') {
     const bioBtn = document.getElementById('bio-toggle-btn');
