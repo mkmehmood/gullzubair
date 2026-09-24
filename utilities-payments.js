@@ -130,30 +130,110 @@ html += `</div>`;
 return html;
 }
 
-async function calculateTotalSoldForRepresentative(seller) {
+function _calcSaleDay(sale) {
+return (sale && (sale.supplyDate || sale.date)) || '';
+}
+
+function _calcFmtDay(d) {
+const dt = new Date(d + 'T00:00:00');
+return isNaN(dt.getTime()) ? d : dt.toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: 'short' });
+}
+
+async function getPendingRepDeliveries(seller) {
 const salesHistory = ensureArray(await sqliteStore.get('noman_history'));
 const customerSales = ensureArray(await sqliteStore.get('customer_sales'));
-if (!seller || seller === 'COMBINED') return 0;
+if (!seller || seller === 'COMBINED') return [];
 const reconciledSalesIds = new Set();
-if (Array.isArray(salesHistory)) {
-  salesHistory.forEach(entry => {
-    if (Array.isArray(entry.linkedSalesIds)) {
-      entry.linkedSalesIds.forEach(id => reconciledSalesIds.add(id));
-    }
-  });
-}
-let totalSold = 0;
-(Array.isArray(customerSales) ? customerSales : []).forEach(sale => {
-  if (sale.currentRepProfile === 'admin' &&
-      sale.customerName === seller &&
-      sale.paymentType === 'CREDIT' &&
-      !sale.creditReceived &&
-      !reconciledSalesIds.has(sale.id) &&
-      sale.transactionType !== 'OLD_DEBT') {
-    totalSold += (sale.quantity || 0);
-  }
+salesHistory.forEach(entry => {
+  if (Array.isArray(entry.linkedSalesIds)) entry.linkedSalesIds.forEach(id => reconciledSalesIds.add(id));
 });
-return totalSold;
+return customerSales.filter(sale =>
+  sale.currentRepProfile === 'admin' &&
+  sale.customerName === seller &&
+  sale.paymentType === 'CREDIT' &&
+  !sale.creditReceived &&
+  !reconciledSalesIds.has(sale.id) &&
+  sale.transactionType !== 'OLD_DEBT'
+).sort((a, b) => {
+  const da = _calcSaleDay(a), db = _calcSaleDay(b);
+  if (da !== db) return da < db ? -1 : 1;
+  return (Number(a.timestamp) || 0) - (Number(b.timestamp) || 0);
+});
+}
+
+async function calculateTotalSoldForRepresentative(seller) {
+const pending = await getPendingRepDeliveries(seller);
+return pending.reduce((t, sale) => t + (sale.quantity || 0), 0);
+}
+
+async function getCalcCycleSelection(seller) {
+const pending = await getPendingRepDeliveries(seller);
+if (!(window._calcCycleDeselected instanceof Set)) window._calcCycleDeselected = new Set();
+const off = window._calcCycleDeselected;
+const selected = pending.filter(s => !off.has(s.id));
+const qty = selected.reduce((t, s) => t + (s.quantity || 0), 0);
+const days = [...new Set(selected.map(_calcSaleDay).filter(Boolean))].sort();
+return {
+  pending, selected,
+  selectedIds: new Set(selected.map(s => s.id)),
+  qty,
+  from: days.length ? days[0] : null,
+  to: days.length ? days[days.length - 1] : null,
+  dayCount: days.length
+};
+}
+
+async function toggleCalcCycleDay(day, checked) {
+const seller = document.getElementById('sellerSelect').value;
+const pending = await getPendingRepDeliveries(seller);
+if (!(window._calcCycleDeselected instanceof Set)) window._calcCycleDeselected = new Set();
+pending.filter(s => _calcSaleDay(s) === day).forEach(s => {
+  if (checked) window._calcCycleDeselected.delete(s.id); else window._calcCycleDeselected.add(s.id);
+});
+await autoFillTotalSoldQuantity();
+}
+
+function renderCalcCycleBox(sel, settleDate) {
+const box = document.getElementById('calcCycleBox');
+const list = document.getElementById('calcCycleList');
+const summary = document.getElementById('calcCycleSummary');
+if (!box || !list || !summary) return;
+if (!sel) { box.classList.add('hidden'); return; }
+box.classList.remove('hidden');
+if (sel.pending.length === 0) {
+  list.innerHTML = '<div class="u-field-hint">No unsettled deliveries for this representative.</div>';
+  summary.textContent = '';
+  return;
+}
+const byDay = new Map();
+sel.pending.forEach(s => {
+  const d = _calcSaleDay(s);
+  if (!byDay.has(d)) byDay.set(d, { qty: 0, value: 0, ids: [] });
+  const g = byDay.get(d);
+  g.qty += (s.quantity || 0);
+  g.value += (s.totalValue || 0);
+  g.ids.push(s.id);
+});
+let html = '';
+byDay.forEach((g, d) => {
+  const on = g.ids.every(id => sel.selectedIds.has(id));
+  html += `<label style="display:flex;align-items:center;gap:10px;padding:8px 10px;margin-bottom:6px;border-radius:8px;cursor:pointer;border:1px solid var(--glass-border);opacity:${on ? 1 : 0.55};">` +
+    `<input type="checkbox" data-day="${esc(d)}" ${on ? 'checked' : ''} style="width:18px;height:18px;accent-color:var(--accent);" onchange="toggleCalcCycleDay(this.dataset.day,this.checked)">` +
+    `<span style="flex:1;font-weight:700;">${esc(_calcFmtDay(d))}</span>` +
+    `<span style="font-weight:800;">${safeNumber(g.qty, 0).toFixed(2)} kg</span>` +
+    `<span class="u-text-muted" style="font-size:0.72rem;min-width:70px;text-align:right;">${fmtAmt(safeValue(g.value))}</span></label>`;
+});
+list.innerHTML = html;
+if (sel.selected.length === 0) {
+  summary.textContent = 'No day selected. Tick the days you are settling now.';
+} else {
+  let txt = `${sel.dayCount} day${sel.dayCount !== 1 ? 's' : ''} · ${_calcFmtDay(sel.from)}${sel.from !== sel.to ? ' → ' + _calcFmtDay(sel.to) : ''} · ${safeNumber(sel.qty, 0).toFixed(2)} kg`;
+  if (settleDate && sel.to) {
+    const lag = Math.round((new Date(settleDate + 'T00:00:00') - new Date(sel.to + 'T00:00:00')) / 86400000);
+    if (!isNaN(lag)) txt += lag >= 0 ? ` · settled ${lag} day${lag !== 1 ? 's' : ''} after last delivery` : ' · ⚠ settlement date is before the last delivery';
+  }
+  summary.textContent = txt;
+}
 }
 
 async function autoFillTotalSoldQuantity() {
@@ -168,15 +248,21 @@ if (!totalSoldField) return;
 if (seller === 'COMBINED') {
 totalSoldField.value = '';
 totalSoldField.readOnly = true;
+renderCalcCycleBox(null);
 return;
 }
-const totalSold = await calculateTotalSoldForRepresentative(seller);
-totalSoldField.value = safeNumber(totalSold, 0).toFixed(2);
+if (window._calcCycleSeller !== seller) {
+  window._calcCycleSeller = seller;
+  window._calcCycleDeselected = new Set();
+}
+const sel = await getCalcCycleSelection(seller);
+totalSoldField.value = safeNumber(sel.qty, 0).toFixed(2);
 totalSoldField.readOnly = true;
 totalSoldField.style.background = 'rgba(37, 99, 235, 0.1)';
 totalSoldField.style.color = 'var(--accent)';
 totalSoldField.style.fontWeight = 'bold';
 totalSoldField.style.border = '1px solid var(--accent)';
+renderCalcCycleBox(sel, date);
 const usedRepSaleIds = new Set();
 if (Array.isArray(salesHistory)) {
   salesHistory.forEach(calcEntry => {
@@ -188,10 +274,11 @@ if (Array.isArray(salesHistory)) {
 (Array.isArray(repSales) ? repSales : []).forEach(sale => {
   if (sale.usedInCalcId) usedRepSaleIds.add(sale.id);
 });
+const windowFrom = sel.from && sel.from < date ? sel.from : date;
 let creditSalesKg = 0;
 let recoveredCash = 0;
 (Array.isArray(repSales) ? repSales : []).forEach(sale => {
-  if (sale.salesRep === seller && sale.date === date && !usedRepSaleIds.has(sale.id)) {
+  if (sale.salesRep === seller && sale.date >= windowFrom && sale.date <= date && !usedRepSaleIds.has(sale.id)) {
     if (sale.paymentType === 'CREDIT') {
       creditSalesKg += (sale.quantity || 0);
     }
