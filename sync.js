@@ -3688,19 +3688,16 @@ overlay.innerHTML = `
 Your account protects your data with enterprise-grade encryption.
 </p>
 
-<button id="auth-google-btn" type="button" onclick="_handleGoogleBtnClick()" aria-label="Sign in with Google" style="
+<button id="auth-google-btn" type="button" class="hover-thumb-zoom" aria-label="Sign in with Google" style="
   display:inline-flex;align-items:center;justify-content:center;
   width:52px;height:52px;border-radius:50%;
-  border:1.5px solid #dadce0;
   background:#fff;
   cursor:pointer;
-  box-shadow:0 1px 3px rgba(0,0,0,0.10);
   margin-bottom:16px;
   transition:box-shadow 0.15s,border-color 0.15s,transform 0.12s,opacity 0.15s;
   -webkit-tap-highlight-color:transparent;
   padding:0;
-" onmouseover="this.style.boxShadow='0 3px 10px rgba(66,133,244,0.28)';this.style.borderColor='#4285F4';this.style.transform='scale(1.08)';"
-   onmouseout="this.style.boxShadow='0 1px 3px rgba(0,0,0,0.10)';this.style.borderColor='#dadce0';this.style.transform='scale(1)';">
+">
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="26" height="26">
     <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
     <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
@@ -3757,6 +3754,8 @@ document.body.appendChild(overlay);
 _initGSIInOverlay();
 const form = document.getElementById('auth-form');
 if(form) form.addEventListener('submit', handleSignIn);
+const googleBtn = document.getElementById('auth-google-btn');
+if (googleBtn) googleBtn.addEventListener('click', _handleGoogleBtnClick);
 
 try {
   const email = await OfflineAuth.getSavedEmail();

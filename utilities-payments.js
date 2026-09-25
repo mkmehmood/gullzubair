@@ -1818,21 +1818,16 @@ html += `<div style="padding: 8px 12px; font-size: 0.7rem; color: var(--text-mut
 if (expenseMatches.length > 0) {
 expenseMatches.forEach(name => {
 if (!name || typeof name !== 'string') return;
-const safeName = esc(name);
 const count = expenseRecords.filter(e => e && e.name === name).length;
 html += `
-<div style="
+<div class="hover-row-highlight" data-action="select-expense" data-name="${esc(name)}" data-kind="expense" style="
 padding: 12px;
 cursor: pointer;
 border-bottom: 1px solid var(--glass-border);
 font-size: 0.85rem;
 color: var(--text-main);
-background: var(--input-bg);
 transition: all 0.2s;
-"
-onmousedown="selectExpense('${safeName}', 'expense')"
-onmouseover="this.style.background='var(--highlight-bg)'"
-onmouseout="this.style.background='var(--input-bg)'">
+">
 <div class="u-row-between" >
 <strong>${esc(name)}</strong>
 <span class="u-fs-sm u-text-muted" >
@@ -1848,21 +1843,16 @@ html += `<div style="padding: 8px 12px; font-size: 0.7rem; color: var(--text-mut
 if (entityMatches.length > 0) {
 entityMatches.forEach(entity => {
 if (!entity || !entity.name || typeof entity.name !== 'string') return;
-const safeName = esc(entity.name);
 const transactions = paymentTransactions.filter(t => t && t.entityId === entity.id).length;
 html += `
-<div style="
+<div class="hover-row-highlight" data-action="select-expense" data-name="${esc(entity.name)}" data-kind="entity" style="
 padding: 12px;
 cursor: pointer;
 border-bottom: 1px solid var(--glass-border);
 font-size: 0.85rem;
 color: var(--text-main);
-background: var(--input-bg);
 transition: all 0.2s;
-"
-onmousedown="selectExpense('${safeName}', 'entity')"
-onmouseover="this.style.background='var(--highlight-bg)'"
-onmouseout="this.style.background='var(--input-bg)'">
+">
 <div class="u-row-between" >
 <strong>${esc(entity.name)}</strong>
 <span class="u-fs-sm u-text-muted" >
@@ -1876,6 +1866,14 @@ html += `<div style="padding: 12px; font-size: 0.8rem; color: var(--text-muted);
 }
 resultsDiv.innerHTML = html;
 resultsDiv.classList.remove('hidden');
+if (!resultsDiv._delegatedListenerAttached) {
+resultsDiv._delegatedListenerAttached = true;
+resultsDiv.addEventListener('mousedown', (e) => {
+const row = e.target.closest('[data-action="select-expense"]');
+if (!row) return;
+selectExpense(row.dataset.name, row.dataset.kind);
+});
+}
 }
 
 function selectExpense(name, type) {
@@ -2344,6 +2342,14 @@ const tbody = document.getElementById('expense-table-body');
 const totalEl = document.getElementById('expense-table-total');
 const totalAllEl = document.getElementById('total-expenses-all');
 if (!tbody) return;
+if (!tbody._delegatedListenerAttached) {
+tbody._delegatedListenerAttached = true;
+tbody.addEventListener('click', (e) => {
+const el = e.target.closest('[data-action="open-expense-entity"]');
+if (!el) return;
+openExpenseEntityDetails(el.dataset.id);
+});
+}
 try {
 const freshExpenses = await sqliteStore.get('expenses', []);
 if (freshExpenses && freshExpenses.length > 0) {
@@ -2423,7 +2429,9 @@ ${fmtAmt(expense.amount)}
 </td>
 <td style="padding: 10px 8px; text-align: center;">
 <button
-onclick="openExpenseEntityDetails('${esc(expense.id)}')"
+class="hover-card-lift"
+data-action="open-expense-entity"
+data-id="${esc(expense.id)}"
 style="
 background: linear-gradient(135deg, var(--accent) 0%, var(--accent-emerald) 100%);
 border: none;
@@ -2435,8 +2443,6 @@ cursor: pointer;
 transition: all 0.2s;
 font-weight: 600;
 "
-onmouseover="this.style.transform='scale(1.05)'; this.style.boxShadow='0 4px 12px rgba(0,122,255,0.3)'"
-onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none'"
 >
 Manage
 </button>
@@ -2752,7 +2758,7 @@ if (row.type === 'transaction') {
 tr.onclick = function(e) { if (!e.target.closest('a,button')) openExpenseEntityDetails(row.id); };
 tr.innerHTML = `
 <td style="padding: 8px 4px; font-size: 0.7rem; white-space: nowrap;">${row.dateStr}</td>
-<td style="padding: 8px 4px; font-weight: 600; font-size: 0.8rem; cursor:pointer;" onclick="openExpenseEntityDetails('${esc(row.id)}')">
+<td style="padding: 8px 4px; font-weight: 600; font-size: 0.8rem; cursor:pointer;">
 ${esc(row.name)}
 <div style="display: inline-block; margin-left: 6px;">
 <span style="color: ${row.typeLabel === 'EXPENSE' ? 'var(--warning)' : 'var(--accent)'}; padding: 2px 6px; border-radius: 4px; font-size: 0.55rem; font-weight: 700;">
@@ -5740,12 +5746,8 @@ name && typeof name === 'string' && name.toLowerCase().includes(query.toLowerCas
 );
 if (matches.length > 0) {
 matches.forEach(name => {
-const safeName = esc(name);
 html += `
-<div style="padding: 10px; cursor: pointer; border-bottom: 1px solid var(--glass-border); font-size: 0.85rem; color: var(--text-main); background: var(--input-bg);"
-onmousedown="selectFromUniversalSearch('${inputId}', '${resultsId}', '${safeName}', 'name')"
-onmouseover="this.style.background='var(--highlight-bg)'"
-onmouseout="this.style.background='var(--input-bg)'">
+<div class="hover-row-highlight" data-action="select-universal" data-value="${esc(name)}" data-type="name" style="padding: 10px; cursor: pointer; border-bottom: 1px solid var(--glass-border); font-size: 0.85rem; color: var(--text-main);">
 <strong>${esc(name)}</strong>
 </div>`;
 });
@@ -5765,15 +5767,10 @@ entity.name.toLowerCase().includes(query.toLowerCase())
 }
 if (matches.length > 0) {
 matches.forEach(entity => {
-const safeName = esc(entity.name);
-const safeId = esc(entity.id);
 const entityBal = calculateEntityBalances()[entity.id] || 0;
 const typeColor = entityBal >= 0 ? 'var(--danger)' : 'var(--accent-emerald)';
 html += `
-<div style="padding: 10px; cursor: pointer; border-bottom: 1px solid var(--glass-border); font-size: 0.85rem; color: var(--text-main); background: var(--input-bg);"
-onmousedown="selectFromUniversalSearch('${inputId}', '${resultsId}', '${safeName}', 'entity', '${safeId}')"
-onmouseover="this.style.background='var(--highlight-bg)'"
-onmouseout="this.style.background='var(--input-bg)'">
+<div class="hover-row-highlight" data-action="select-universal" data-value="${esc(entity.name)}" data-type="entity" data-id="${esc(entity.id)}" style="padding: 10px; cursor: pointer; border-bottom: 1px solid var(--glass-border); font-size: 0.85rem; color: var(--text-main);">
 <strong>${esc(entity.name)}</strong>
 </div>`;
 });
@@ -5793,13 +5790,8 @@ entity.name.toLowerCase().includes(query.toLowerCase())
 }
 if (matches.length > 0) {
 matches.forEach(supplier => {
-const safeName = esc(supplier.name);
-const safeId = esc(supplier.id);
 html += `
-<div style="padding: 10px; cursor: pointer; border-bottom: 1px solid var(--glass-border); font-size: 0.85rem; color: var(--text-main); background: var(--input-bg);"
-onmousedown="selectFromUniversalSearch('${inputId}', '${resultsId}', '${safeName}', 'supplier', '${safeId}')"
-onmouseover="this.style.background='var(--highlight-bg)'"
-onmouseout="this.style.background='var(--input-bg)'">
+<div class="hover-row-highlight" data-action="select-universal" data-value="${esc(supplier.name)}" data-type="supplier" data-id="${esc(supplier.id)}" style="padding: 10px; cursor: pointer; border-bottom: 1px solid var(--glass-border); font-size: 0.85rem; color: var(--text-main);">
 <strong>${esc(supplier.name)}</strong>
 ${supplier.phone ? `<span style="font-size: 0.7rem; color: var(--text-muted); margin-left: 8px;">${phoneActionHTML(supplier.phone)}</span>` : ''}
 </div>`;
@@ -5828,12 +5820,8 @@ name && typeof name === 'string' && name.toLowerCase().includes(query.toLowerCas
 );
 if (matches.length > 0) {
 matches.forEach(name => {
-const safeName = esc(name);
 html += `
-<div style="padding: 10px; cursor: pointer; border-bottom: 1px solid var(--glass-border); font-size: 0.85rem; color: var(--text-main); background: var(--input-bg);"
-onmousedown="selectFromUniversalSearch('${inputId}', '${resultsId}', '${safeName}', 'repName')"
-onmouseover="this.style.background='var(--highlight-bg)'"
-onmouseout="this.style.background='var(--input-bg)'">
+<div class="hover-row-highlight" data-action="select-universal" data-value="${esc(name)}" data-type="repName" style="padding: 10px; cursor: pointer; border-bottom: 1px solid var(--glass-border); font-size: 0.85rem; color: var(--text-main);">
 <strong>${esc(name)}</strong>
 </div>`;
 });
@@ -5847,6 +5835,15 @@ break;
 }
 resultsDiv.innerHTML = html;
 resultsDiv.classList.remove('hidden');
+resultsDiv.dataset.inputId = inputId;
+if (!resultsDiv._delegatedListenerAttached) {
+resultsDiv._delegatedListenerAttached = true;
+resultsDiv.addEventListener('mousedown', (e) => {
+const row = e.target.closest('[data-action="select-universal"]');
+if (!row) return;
+selectFromUniversalSearch(resultsDiv.dataset.inputId, resultsDiv.id, row.dataset.value, row.dataset.type, row.dataset.id);
+});
+}
 }
 
 function selectFromUniversalSearch(inputId, resultsId, value, type, id) {

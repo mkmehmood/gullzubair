@@ -3392,8 +3392,7 @@ function _applyExpensePendingPhoto(dataUrl) {
 function renderPersonAvatarHTML(photoDataUrl, size) {
   const sz = size || 44;
   if (photoDataUrl) {
-    const safe = photoDataUrl.replace(/'/g, '&#39;');
-    return `<div class="person-avatar-ring" style="width:${sz}px;height:${sz}px;cursor:pointer;position:relative;" onclick="openPhotoLightbox('${safe}')" title="View photo"><img src="${photoDataUrl}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;"><div style="position:absolute;inset:0;border-radius:50%;background:rgba(0,0,0,0);transition:background 0.15s;" onmouseover="this.style.background='rgba(0,0,0,0.18)'" onmouseout="this.style.background='rgba(0,0,0,0)'"></div></div>`;
+    return `<div class="person-avatar-ring" style="width:${sz}px;height:${sz}px;cursor:pointer;position:relative;" data-action="open-photo-lightbox" data-src="${esc(photoDataUrl)}" title="View photo"><img src="${photoDataUrl}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;"><div class="hover-photo-dim" style="position:absolute;inset:0;border-radius:50%;"></div></div>`;
   }
   return `<div class="person-avatar-ring" style="width:${sz}px;height:${sz}px;"><svg width="${Math.round(sz*0.5)}" height="${Math.round(sz*0.5)}" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="13" r="6" fill="currentColor"/><path d="M6 30c0-6.627 5.373-10 12-10s12 3.373 12 10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/></svg></div>`;
 }
@@ -3453,6 +3452,12 @@ function renderPersonAvatarHTML(photoDataUrl, size) {
     if (lbl) lbl.textContent = '1×';
     _lbBindEvents(modal, img);
   };
+
+  document.addEventListener('click', (e) => {
+    const el = e.target.closest('[data-action="open-photo-lightbox"]');
+    if (!el) return;
+    window.openPhotoLightbox(el.dataset.src);
+  });
 
   window.closePhotoLightbox = function() {
     const modal = document.getElementById('photo-lightbox-modal');

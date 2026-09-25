@@ -301,10 +301,9 @@ if (!filtered.length) {
 dropdown.innerHTML = '<div class="u-search-empty">No materials found</div>';
 } else {
 dropdown.innerHTML = filtered.map(i =>
-`<div class="factory-mat-option" data-id="${esc(String(i.id))}" data-cost="${esc(String(i.cost))}" data-name="${esc(i.name)}"
-style="padding:9px 10px;cursor:pointer;border-bottom:1px solid var(--glass-border);font-size:0.85rem;color:var(--text-main);background:var(--input-bg);"
-onmouseover="this.style.background='var(--highlight-bg)'"
-onmouseout="this.style.background='var(--input-bg)'">${esc(i.name)}</div>`
+`<div class="factory-mat-option hover-row-highlight" data-id="${esc(String(i.id))}" data-cost="${esc(String(i.cost))}" data-name="${esc(i.name)}"
+style="padding:9px 10px;cursor:pointer;border-bottom:1px solid var(--glass-border);font-size:0.85rem;color:var(--text-main);"
+>${esc(i.name)}</div>`
 ).join('');
 }
 dropdown.classList.remove('hidden');

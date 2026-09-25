@@ -1638,6 +1638,38 @@ window._showLogoutConfirmDialog = async function() {
 }
 .person-avatar-ring img { width:100%; height:100%; object-fit:cover; }
 .person-avatar-ring svg { opacity: 0.35; }
+
+/* Hover-effect utility classes — replace inline onmouseover/onmouseout
+   handlers (all static, no dynamic data) so these no longer require
+   'unsafe-inline' in script-src. Pure CSS :hover, zero JS. */
+.hover-row-highlight { background: var(--input-bg); transition: background 0.15s; }
+.hover-row-highlight:hover { background: var(--highlight-bg); }
+
+.hover-row-dim { background: rgba(0,0,0,0); transition: background 0.15s; }
+.hover-row-dim:hover { background: rgba(0,0,0,0.18); }
+
+.hover-card-lift {
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.hover-card-lift:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0,122,255,0.3);
+}
+
+.hover-thumb-zoom {
+  border: 1.5px solid #dadce0;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.10);
+  transform: scale(1);
+  transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+}
+.hover-thumb-zoom:hover {
+  box-shadow: 0 3px 10px rgba(66,133,244,0.28);
+  border-color: #4285F4;
+  transform: scale(1.08);
+}
+
+.hover-photo-dim { background: rgba(0,0,0,0); transition: background 0.15s; }
+.hover-photo-dim:hover { background: rgba(0,0,0,0.18); }
 </style>
 
 <input type="file" id="restoreInput" class="hidden" accept=".json,.gznd" onchange="(async () => { await unifiedRestore(event) })()">
