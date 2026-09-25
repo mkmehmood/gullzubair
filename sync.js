@@ -3884,13 +3884,13 @@ sqliteStore.set('session_start', Date.now()).catch(() => {});
 if (typeof database !== 'undefined' && database) {
 try {
 const userRef = firebaseDB.collection('users').doc(user.uid);
-const snap = await userRef.get();
-if (!snap.exists) {
-await userRef.set({ email: user.email, displayName: user.displayName || '', createdAt: Date.now(), role: 'user', authProvider: 'google' });
-} else {
+// Account provisioning is admin-only (Firestore rule: `allow create: if isAdmin();`
+// on /users/{uid}). By this point _checkUserApproved() has already verified this
+// user's profile document exists and isn't suspended (otherwise they'd have been
+// signed out above), so we never attempt to create it here — only to update the
+// fields a signed-in owner is permitted to touch (authProviders, lastLoginAt).
 const providers = (user.providerData || []).map(p => p.providerId).filter(Boolean);
 await userRef.set({ authProviders: providers, lastLoginAt: Date.now() }, { merge: true });
-}
 } catch(e) { console.warn('Google auth: Firestore user-doc write failed', _safeErr(e)); }
 }
 await _linkPasswordAfterGoogleSignIn(user);
@@ -4327,8 +4327,8 @@ const dot = approved
 const actions = isMe
   ? '<span style="font-size:0.65rem;color:var(--text-muted);font-style:italic;">(you)</span>'
   : [
-      '<button class="btn-theme" data-uid="' + acct.uid + '" data-approved="' + approved + '" data-email="' + esc(acct.email||'') + '" onclick="adminToggleApproval(this.dataset.uid,this.dataset.email,this.dataset.approved===\'true\')" style="font-size:0.72rem;padding:4px 9px;color:' + (approved ? 'var(--accent-gold)' : 'var(--accent-emerald)') + ';border-color:' + (approved ? 'rgba(251,191,36,0.3)' : 'rgba(29,233,182,0.3)') + ';">' + (approved ? 'Suspend' : 'Reinstate') + '</button>',
-      '<button class="btn-theme" data-uid="' + acct.uid + '" data-email="' + esc(acct.email||'') + '" onclick="adminRemoveAccount(this.dataset.uid,this.dataset.email)" style="font-size:0.72rem;padding:4px 9px;color:var(--danger);border-color:rgba(239,68,68,0.3);">Remove</button>'
+      '<button class="btn-theme" data-uid="' + esc(acct.uid) + '" data-approved="' + approved + '" data-email="' + esc(acct.email||'') + '" onclick="adminToggleApproval(this.dataset.uid,this.dataset.email,this.dataset.approved===\'true\')" style="font-size:0.72rem;padding:4px 9px;color:' + (approved ? 'var(--accent-gold)' : 'var(--accent-emerald)') + ';border-color:' + (approved ? 'rgba(251,191,36,0.3)' : 'rgba(29,233,182,0.3)') + ';">' + (approved ? 'Suspend' : 'Reinstate') + '</button>',
+      '<button class="btn-theme" data-uid="' + esc(acct.uid) + '" data-email="' + esc(acct.email||'') + '" onclick="adminRemoveAccount(this.dataset.uid,this.dataset.email)" style="font-size:0.72rem;padding:4px 9px;color:var(--danger);border-color:rgba(239,68,68,0.3);">Remove</button>'
     ].join('');
 return '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;background:var(--glass-raised);border:1px solid var(--glass-border);border-radius:var(--radius-lg);margin-bottom:8px;">' +
   '<div style="display:flex;align-items:center;gap:8px;min-width:0;flex:1;">' + dot +
